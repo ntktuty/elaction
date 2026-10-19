@@ -176,6 +176,8 @@ body.adm main,body.adm header .wrap{max-width:1100px}
       <div id="regOnly" class="hide">
         <label class="f" for="rname">பெயர்</label>
         <input type="text" id="rname" lang="ta" autocomplete="name" placeholder="முழு பெயர்">
+        <label class="f" for="rconst">தொகுதி (தூத்துக்குடி மாவட்டம்)</label>
+        <select id="rconst"><option value="">-- தொகுதியைத் தேர்ந்தெடுக்கவும் --</option><option>விளாத்திகுளம்</option><option>தூத்துக்குடி</option><option>திருச்செந்தூர்</option><option>ஸ்ரீவைகுண்டம்</option><option>ஒட்டப்பிடாரம்</option><option>கோவில்பட்டி</option></select>
         <label class="chk"><input type="checkbox" id="rmember"> நான் நாம் தமிழர் உறவு</label>
       </div>
       <label class="f" for="lmobile">செல் நம்பர்</label>
@@ -454,7 +456,7 @@ function card(r){
     <div class="top"><span><b>${id}</b> · ${esc(r.date)}</span>
       <select data-st="${id}" aria-label="நிலை">${opts}</select></div>
     <div class="nm">${esc(r.name)}</div>
-    <div class="meta"><span class="svcchip">${esc(r.service)}</span><span class="svcchip">${r.member==="ஆம்"?"🟢 உறவு · கட்டணமில்லை":"உறவு அல்லாதவர்"}</span><a href="tel:${esc(r.mobile)}">📞 ${esc(r.mobile)}</a></div>
+    <div class="meta"><span class="svcchip">${esc(r.service)}</span><span class="svcchip">${r.member==="ஆம்"?"🟢 உறவு · கட்டணமில்லை":"உறவு அல்லாதவர்"}</span>${r.constituency?`<span class="svcchip">📍 ${esc(r.constituency)}</span>`:""}<a href="tel:${esc(r.mobile)}">📞 ${esc(r.mobile)}</a></div>
     <div class="cnt">பதிவு செய்தவர்: ${esc(r.ownerName)} · ${esc(r.owner)}</div>
     <div class="links">${links(r)}</div>
     ${r.reason?`<div class="reason"><b>நீக்க காரணம்:</b> ${esc(r.reason)}</div>`:""}
@@ -537,9 +539,9 @@ $("cards").addEventListener("click",async e=>{
 });
 
 $("csvBtn").onclick=()=>{
-  const H=["ID","தேதி","பெயர்","செல்","சேவை","வாக்காளர் எண்","புகைப்படம்","ஆதார்","வா.அட்டை","நிலை","முடிந்த ஆவணம்","கேஸ் பில்/தீர்வை","நீக்க காரணம்","பதிவு செய்தவர்","பதிவர் செல்","உறவு"];
+  const H=["ID","தேதி","பெயர்","செல்","சேவை","வாக்காளர் எண்","புகைப்படம்","ஆதார்","வா.அட்டை","நிலை","முடிந்த ஆவணம்","கேஸ் பில்/தீர்வை","நீக்க காரணம்","பதிவு செய்தவர்","பதிவர் செல்","உறவு","தொகுதி"];
   const q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
-  const csv="\ufeff"+[H.map(q).join(",")].concat(adminRows.map(r=>[r.id,r.date,r.name,r.mobile,r.service,r.voterNo,r.photo,r.aadhaar,r.voterCard,r.status,r.doneDoc,r.bill,r.reason,r.ownerName,r.owner,r.member].map(q).join(","))).join("\n");
+  const csv="\ufeff"+[H.map(q).join(",")].concat(adminRows.map(r=>[r.id,r.date,r.name,r.mobile,r.service,r.voterNo,r.photo,r.aadhaar,r.voterCard,r.status,r.doneDoc,r.bill,r.reason,r.ownerName,r.owner,r.member,r.constituency].map(q).join(","))).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download="ntk-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
 };
@@ -630,7 +632,7 @@ function tab(n){
 }
 function paint(){
   const on=!!user; $("authBox").classList.toggle("hide",on); $("appBox").classList.toggle("hide",!on);
-  if(on){ $("whoTxt").textContent="👤 "+user.name+" · "+user.mobile; tab(0); }
+  if(on){ $("whoTxt").textContent="👤 "+user.name+" · "+user.mobile+(user.constituency?" · "+user.constituency:""); tab(0); }
 }
 async function loadMine(){
   try{ mineRows=(await api({action:"mine"})).rows; }catch(e){ return; }
@@ -653,9 +655,9 @@ $("authBtn").onclick=async()=>{
   if(!/^[6-9]\d{9}$/.test(mobile)) return show(m,"err","சரியான 10 இலக்க செல் நம்பரை உள்ளிடவும்");
   if(!/^\d{4,6}$/.test(pin)) return show(m,"err","PIN 4–6 இலக்கமாக இருக்க வேண்டும்");
   const p={action:reg?"register":"login",mobile,pin};
-  if(reg){ p.name=$("rname").value.trim(); p.member=$("rmember").checked; if(!p.name) return show(m,"err","பெயரை உள்ளிடவும்"); }
+  if(reg){ p.name=$("rname").value.trim(); p.member=$("rmember").checked; if(!p.name) return show(m,"err","பெயரை உள்ளிடவும்"); p.constituency=$("rconst").value; if(!p.constituency) return show(m,"err","தொகுதியைத் தேர்ந்தெடுக்கவும்"); }
   const b=$("authBtn"); b.disabled=true;
-  try{ const r=await api(p); user={token:r.token,name:r.name,mobile,member:r.member}; saveUser(); $("lpin").value=""; m.className="msg"; paint(); }
+  try{ const r=await api(p); user={token:r.token,name:r.name,mobile,member:r.member,constituency:r.constituency||""}; saveUser(); $("lpin").value=""; m.className="msg"; paint(); }
   catch(e){ show(m,"err",e.message); }
   b.disabled=false;
 };
